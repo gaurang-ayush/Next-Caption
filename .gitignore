@@ -15,3 +15,8 @@ benchmark/data/
 *.md
 *.txt
 .env.example
+
+fix_refs.py
+odia_benchmark.py
+results/
+md & report/
