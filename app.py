@@ -15,10 +15,22 @@ from pathlib import Path
 from typing import Optional
 
 import streamlit as st
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# BOM-safe .env loader — fixes Windows UTF-8 BOM issue with dotenv
+def _load_env_bom_safe():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8-sig') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, _, val = line.partition('=')
+                        os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+        except Exception as e:
+            print(f"[app] .env load error: {e}")
+
+_load_env_bom_safe()
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -589,6 +601,9 @@ with tab_file:
             srt_content = Path(srt_path).read_text(encoding="utf-8")
             st.session_state.srt_content = srt_content
             st.session_state.srt_filename = Path(uploaded.name).stem + f"_{selected_mode}.srt"
+            st.session_state.detected_language = pipeline.asr_router._detect_language_from_audio(b"")
+
+            # Try to get actual detected language from pipeline state
             st.session_state.detected_language = selected_language
 
         except Exception as e:
@@ -664,7 +679,7 @@ with tab_live:
         "mode": live_mode,
     })
 
-    st.components.v1.html(f"""
+    st.html(f"""
 <style>
   body {{ font-family: 'DM Sans', sans-serif; background: transparent; margin: 0; }}
   .ctrl-bar {{ display: flex; gap: 10px; padding: 1rem 0 0; }}
@@ -815,7 +830,7 @@ function downloadSession() {{
   log('Downloaded ' + sessionSrt.length + ' segments');
 }}
 </script>
-""", height=120)
+""")
 
 
 # ============================================================
